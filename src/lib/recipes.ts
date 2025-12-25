@@ -53,6 +53,52 @@ export async function createRecipe(formData: FormData) {
     if (error) throw error;
   }  
 
+export async function updateRecipe(id: string, formData: FormData) {
+    const title = formData.get("title") as string;
+    const notes = formData.get("notes") as string | null;
+  
+    const supabase = getSupabase();
+  
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+  
+    if (!user) {
+      throw new Error("Not authenticated");
+    }
+  
+    const { error } = await supabase
+      .from("recipes")
+      .update({
+        title,
+        notes: notes || null,
+      })
+      .eq("id", id)
+      .eq("user_id", user.id);
+  
+    if (error) throw error;
+  }
+  
+export async function deleteRecipe(id: string) {
+    const supabase = getSupabase();
+  
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+  
+    if (!user) {
+      throw new Error("Not authenticated");
+    }
+  
+    const { error } = await supabase
+      .from("recipes")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user.id);
+  
+    if (error) throw error;
+  }  
+
 export async function logout() {
     const supabase = getSupabase();
     await supabase.auth.signOut();

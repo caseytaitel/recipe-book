@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { createServerClient } from "@supabase/ssr";
-import { getRecipes } from "@/lib/recipes";
-import { logout } from "@/lib/recipes";
+import { getRecipes, deleteRecipe, logout } from "@/lib/recipes";
 
 export default async function RecipesPage() {
   const cookieStore = await cookies();
@@ -27,6 +27,12 @@ export default async function RecipesPage() {
   if (!user) redirect("/login");
 
   const recipes = await getRecipes();
+
+  async function handleDelete(id: string) {
+    "use server";
+    await deleteRecipe(id);
+    revalidatePath("/recipes");
+  }    
 
   async function handleLogout() {
     "use server";
@@ -67,9 +73,28 @@ export default async function RecipesPage() {
           {recipes.map((recipe) => (
             <li key={recipe.id} className="rounded-md border p-3">
               <p className="font-medium">{recipe.title}</p>
+
               {recipe.notes && (
                 <p className="text-sm text-slate-600">{recipe.notes}</p>
               )}
+
+              <div className="mt-2 flex gap-2">
+                <Link
+                  href={`/recipes/${recipe.id}/edit`}
+                  className="text-sm underline"
+                >
+                  Edit
+                </Link>
+
+                <form action={handleDelete.bind(null, recipe.id)}>
+                  <button
+                    type="submit"
+                    className="text-sm text-red-600 underline"
+                  >
+                    Delete
+                  </button>
+                </form>
+              </div>
             </li>
           ))}
         </ul>
