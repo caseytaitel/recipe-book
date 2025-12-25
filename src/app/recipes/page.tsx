@@ -1,0 +1,79 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
+import { getRecipes } from "@/lib/recipes";
+import { logout } from "@/lib/recipes";
+
+export default async function RecipesPage() {
+  const cookieStore = await cookies();
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const recipes = await getRecipes();
+
+  async function handleLogout() {
+    "use server";
+    await logout();
+    redirect("/login");
+  }  
+
+  return (
+    <main className="space-y-6">
+      <header className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Recipes</h1>
+
+        <div className="flex gap-2">
+          <Link
+            href="/recipes/new"
+            className="rounded-md bg-black px-4 py-2 text-white"
+          >
+            Add recipe
+          </Link>
+
+          <form action={handleLogout}>
+            <button
+              type="submit"
+              className="rounded-md border px-4 py-2"
+            >
+              Log out
+            </button>
+          </form>
+        </div>
+      </header>
+
+      {recipes.length === 0 ? (
+        <p className="text-slate-600">
+          No recipes yet. Add your first one.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {recipes.map((recipe) => (
+            <li key={recipe.id} className="rounded-md border p-3">
+              <p className="font-medium">{recipe.title}</p>
+              {recipe.notes && (
+                <p className="text-sm text-slate-600">{recipe.notes}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </main>
+  );
+}
