@@ -28,7 +28,8 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/recipes");
+    router.replace("/recipes");
+    router.refresh();
   }
 
   return (

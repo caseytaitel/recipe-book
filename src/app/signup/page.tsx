@@ -38,8 +38,9 @@ export default function SignupPage() {
       setError(signInError.message);
       return;
     }
-  
-    router.push("/recipes");
+
+    router.replace("/recipes");
+    router.refresh();
   }  
 
   return (

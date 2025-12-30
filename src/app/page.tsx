@@ -19,13 +19,7 @@ export default function HomePage() {
           className="rounded-lg border px-4 py-2 hover:bg-slate-50"
           href="/signup"
         >
-          Sign up
-        </Link>
-        <Link
-          className="rounded-lg border px-4 py-2 hover:bg-slate-50"
-          href="/recipes"
-        >
-          Recipes
+          Sign Up
         </Link>
       </div>
     </main>

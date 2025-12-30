@@ -36,6 +36,9 @@ export async function middleware(request: NextRequest) {
   // This refreshes the session if needed
   await supabase.auth.getUser();
 
+  // Set pathname header for layout to use
+  response.headers.set("x-pathname", request.nextUrl.pathname);
+
   return response;
 }
 

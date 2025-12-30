@@ -10,9 +10,7 @@ export default async function EditRecipePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  // ✅ UNWRAP params (THIS WAS THE BUG)
   const { id } = await params;
-
   const cookieStore = await cookies();
 
   const supabase = createServerClient(
@@ -22,12 +20,6 @@ export default async function EditRecipePage({
       cookies: {
         get(name: string) {
           return cookieStore.get(name)?.value;
-        },
-        set(name: string, value: string, options: any) {
-          cookieStore.set({ name, value, ...options });
-        },
-        remove(name: string, options: any) {
-          cookieStore.set({ name, value: "", ...options });
         },
       },
     }
@@ -39,44 +31,74 @@ export default async function EditRecipePage({
 
   if (!user) redirect("/login");
 
-  const { data: recipe } = await supabase
-    .from("recipes")
-    .select("id, title, notes")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .single();
+  const { data } = await supabase
+  .from("recipes")
+  .select("id, title, ingredients, steps, notes")
+  .eq("id", id)
+  .eq("user_id", user.id)
+  .single();
 
-  if (!recipe) redirect("/recipes");
+  if (!data) redirect("/recipes");
 
-  const safeRecipe = recipe;
+  const recipe = data;
 
   async function action(formData: FormData) {
     "use server";
-    await updateRecipe(safeRecipe.id, formData);
-    redirect("/recipes");
+    await updateRecipe(recipe.id, formData);
+    redirect(`/recipes/${recipe.id}`);
   }
 
   return (
-    <main className="max-w-md space-y-4">
+    <main className="max-w-md space-y-6">
       <h1 className="text-xl font-semibold">Edit recipe</h1>
 
-      <form action={action} className="space-y-3">
-        <input
-          name="title"
-          required
-          defaultValue={recipe.title}
-          className="w-full rounded-md border p-2"
-        />
+      <form action={action} className="space-y-4">
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Title</label>
+          <input
+            name="title"
+            required
+            defaultValue={recipe.title}
+            className="w-full rounded-md border p-2"
+          />
+        </div>
 
-        <textarea
-          name="notes"
-          defaultValue={recipe.notes ?? ""}
-          className="w-full rounded-md border p-2"
-          rows={4}
-        />
+        <div className="space-y-1">
+          <label className="text-sm font-medium">
+            Ingredients (one per line)
+          </label>
+          <textarea
+            name="ingredients"
+            rows={5}
+            defaultValue={recipe.ingredients.join("\n")}
+            className="w-full rounded-md border p-2"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-sm font-medium">
+            Steps (one per line)
+          </label>
+          <textarea
+            name="steps"
+            rows={6}
+            defaultValue={recipe.steps.join("\n")}
+            className="w-full rounded-md border p-2"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Notes</label>
+          <textarea
+            name="notes"
+            rows={4}
+            defaultValue={recipe.notes ?? ""}
+            className="w-full rounded-md border p-2"
+          />
+        </div>
 
         <button className="rounded-md bg-black px-4 py-2 text-white">
-          Save changes
+          Save Changes
         </button>
       </form>
     </main>

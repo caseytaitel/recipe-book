@@ -31,53 +31,78 @@ export async function getRecipes() {
 }
 
 export async function createRecipe(formData: FormData) {
-    const title = formData.get("title") as string;
-    const notes = formData.get("notes") as string | null;
-  
-    const supabase = getSupabase();
-  
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-  
-    if (!user) {
-      throw new Error("Not authenticated");
-    }
-  
-    const { error } = await supabase.from("recipes").insert({
-      title,
-      notes: notes || null,
-      user_id: user.id,
-    });
-  
-    if (error) throw error;
-  }  
+  const supabase = getSupabase();
 
-export async function updateRecipe(id: string, formData: FormData) {
-    const title = formData.get("title") as string;
-    const notes = formData.get("notes") as string | null;
-  
-    const supabase = getSupabase();
-  
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-  
-    if (!user) {
-      throw new Error("Not authenticated");
-    }
-  
-    const { error } = await supabase
-      .from("recipes")
-      .update({
-        title,
-        notes: notes || null,
-      })
-      .eq("id", id)
-      .eq("user_id", user.id);
-  
-    if (error) throw error;
-  }
+  const title = formData.get("title") as string;
+  const ingredientsText = formData.get("ingredients") as string;
+  const stepsText = formData.get("steps") as string;
+
+  const ingredients = ingredientsText
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const steps = stepsText
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Not authenticated");
+
+  const { error } = await supabase.from("recipes").insert({
+    title,
+    ingredients,
+    steps,
+    user_id: user.id,
+  });
+
+  if (error) throw error;
+}  
+
+export async function updateRecipe(
+  recipeId: string,
+  formData: FormData
+) {
+  const supabase = getSupabase();
+
+  const title = formData.get("title") as string;
+  const ingredientsText = formData.get("ingredients") as string;
+  const stepsText = formData.get("steps") as string;
+  const notes = formData.get("notes") as string;
+
+  const ingredients = ingredientsText
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const steps = stepsText
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Not authenticated");
+
+  const { error } = await supabase
+    .from("recipes")
+    .update({
+      title,
+      ingredients,
+      steps,
+      notes,
+    })
+    .eq("id", recipeId)
+    .eq("user_id", user.id);
+
+  if (error) throw error;
+}
   
 export async function deleteRecipe(id: string) {
     const supabase = getSupabase();
@@ -101,5 +126,6 @@ export async function deleteRecipe(id: string) {
 
 export async function logout() {
     const supabase = getSupabase();
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
   }  

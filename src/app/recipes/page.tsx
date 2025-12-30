@@ -1,9 +1,10 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createServerClient } from "@supabase/ssr";
-import { getRecipes, deleteRecipe, logout } from "@/lib/recipes";
+import { deleteRecipe, getRecipes } from "@/lib/recipes";
 
 export default async function RecipesPage() {
   const cookieStore = await cookies();
@@ -31,37 +32,19 @@ export default async function RecipesPage() {
   async function handleDelete(id: string) {
     "use server";
     await deleteRecipe(id);
-    revalidatePath("/recipes");
-  }    
-
-  async function handleLogout() {
-    "use server";
-    await logout();
-    redirect("/login");
-  }  
+  }
 
   return (
     <main className="space-y-6">
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Recipes</h1>
 
-        <div className="flex gap-2">
-          <Link
-            href="/recipes/new"
-            className="rounded-md bg-black px-4 py-2 text-white"
-          >
-            Add recipe
-          </Link>
-
-          <form action={handleLogout}>
-            <button
-              type="submit"
-              className="rounded-md border px-4 py-2"
-            >
-              Log out
-            </button>
-          </form>
-        </div>
+        <Link
+          href="/recipes/new"
+          className="rounded-md bg-black px-4 py-2 text-white"
+        >
+          Add recipe
+        </Link>
       </header>
 
       {recipes.length === 0 ? (
@@ -71,14 +54,20 @@ export default async function RecipesPage() {
       ) : (
         <ul className="space-y-2">
           {recipes.map((recipe) => (
-            <li key={recipe.id} className="rounded-md border p-3">
-              <p className="font-medium">{recipe.title}</p>
+            <li
+              key={recipe.id}
+              className="rounded-md border p-3 space-y-2"
+            >
+              {/* Primary action: view recipe */}
+              <Link
+                href={`/recipes/${recipe.id}`}
+                className="font-medium underline"
+              >
+                {recipe.title}
+              </Link>
 
-              {recipe.notes && (
-                <p className="text-sm text-slate-600">{recipe.notes}</p>
-              )}
-
-              <div className="mt-2 flex gap-2">
+              {/* Secondary actions */}
+              <div className="flex gap-2">
                 <Link
                   href={`/recipes/${recipe.id}/edit`}
                   className="text-sm underline"
