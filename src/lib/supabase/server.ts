@@ -1,40 +1,47 @@
-import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
 
-export function createSupabaseServerClient() {
+/**
+ * READ-ONLY Supabase client
+ * Safe for Server Components (layout, pages)
+ * NEVER writes cookies
+ */
+export async function createSupabaseServerReadClient() {
+  const cookieStore = await cookies();
+
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        async getAll() {
-          const store = await cookies();
-          return store.getAll();
+        get(name: string) {
+          return cookieStore.get(name)?.value;
         },
       },
     }
   );
 }
 
-export function createSupabaseServerActionClient() {
+/**
+ * WRITE-ENABLED Supabase client
+ * ONLY for Server Actions
+ */
+export async function createSupabaseServerActionClient() {
+  const cookieStore = await cookies();
+
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        async getAll() {
-          const store = await cookies();
-          return store.getAll();
+        get(name: string) {
+          return cookieStore.get(name)?.value;
         },
-        async setAll(cookiesToSet) {
-          try {
-            const store = await cookies();
-            cookiesToSet.forEach(({ name, value, options }) => {
-              store.set(name, value, options);
-            });
-          } catch {
-            // Ignore cookie writes outside Server Actions
-          }        
+        set(name: string, value: string, options: any) {
+          cookieStore.set({ name, value, ...options });
+        },
+        remove(name: string, options: any) {
+          cookieStore.set({ name, value: "", ...options });
         },
       },
     }

@@ -1,6 +1,6 @@
 import "./globals.css";
 import { cookies, headers } from "next/headers";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerReadClient } from "@/lib/supabase/server";
 import NavBar from "./NavBar";
 
 export const metadata = {
@@ -13,7 +13,7 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerReadClient();
   const headersList = await headers();
   const pathname = headersList.get("x-pathname") || "";
 

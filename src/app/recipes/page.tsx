@@ -2,11 +2,11 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerReadClient } from "@/lib/supabase/server";
 import { deleteRecipe, getRecipes } from "@/lib/recipes";
 
 export default async function RecipesPage() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerReadClient();
 
   const {
     data: { user },

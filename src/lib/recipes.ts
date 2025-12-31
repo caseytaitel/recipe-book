@@ -8,7 +8,7 @@ type LineItem = {
 };
 
 export async function getRecipes() {
-  const supabase = createSupabaseServerActionClient();
+  const supabase = await createSupabaseServerActionClient();
 
   const { data, error } = await supabase
     .from("recipes")
@@ -20,7 +20,7 @@ export async function getRecipes() {
 }
 
 export async function createRecipe(formData: FormData) {
-  const supabase = createSupabaseServerActionClient();
+  const supabase = await createSupabaseServerActionClient();
 
   const title = formData.get("title") as string;
 
@@ -64,7 +64,7 @@ export async function updateRecipe(
   recipeId: string,
   formData: FormData
 ) {
-  const supabase = createSupabaseServerActionClient();
+  const supabase = await createSupabaseServerActionClient();
 
   const title = formData.get("title") as string;
   const notes = formData.get("notes") as string | null;
@@ -110,7 +110,7 @@ export async function updateRecipe(
 }
 
 export async function deleteRecipe(id: string) {
-  const supabase = createSupabaseServerActionClient();
+  const supabase = await createSupabaseServerActionClient();
 
   const {
     data: { user },
@@ -130,7 +130,7 @@ export async function deleteRecipe(id: string) {
 }
 
 export async function logout() {
-  const supabase = createSupabaseServerActionClient();
+  const supabase = await createSupabaseServerActionClient();
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }
