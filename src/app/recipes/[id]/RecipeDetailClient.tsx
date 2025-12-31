@@ -1,7 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { updateRecipe } from "@/lib/recipes";
+import { createRecipe, updateRecipe } from "@/lib/recipes";
 
 type LineItem = {
   id: string;
@@ -57,7 +58,14 @@ type DirtyMap = {
   notes: boolean;
 };
 
-export default function RecipeDetailClient({ recipe }: { recipe: Recipe }) {
+export default function RecipeDetailClient({
+  recipe,
+  isImport = false,
+}: {
+  recipe: Recipe;
+  isImport?: boolean;
+}) {
+  const router = useRouter();
   const SAVED_LINGER_MS = 1200;
   const SAVED_FADE_MS = 150;
 
@@ -286,7 +294,16 @@ export default function RecipeDetailClient({ recipe }: { recipe: Recipe }) {
     );
     formData.append("notes", normalizedNotes);
 
-    await updateRecipe(recipe.id, formData);
+    if (isImport) {
+      await createRecipe(formData);
+    } else {
+      await updateRecipe(recipe.id, formData);
+    }    
+
+    if (isImport) {
+      router.push("/recipes");
+      return;
+    }    
 
     setIngredientsLines(normalizedIngredients);
     setStepsLines(normalizedSteps);

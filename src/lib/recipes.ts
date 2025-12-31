@@ -1,6 +1,7 @@
 "use server";
 
 import { createSupabaseServerActionClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
 
 type LineItem = {
   id: string;
@@ -58,6 +59,55 @@ export async function createRecipe(formData: FormData) {
   });
 
   if (error) throw error;
+
+  revalidatePath("/recipes");
+}
+
+export async function createRecipeFromImport(draft: {
+  title: string;
+  ingredients: string[];
+  steps: string[];
+  notes?: string;
+  source?: {
+    type: string;
+    value: string;
+  };
+}) {
+  const supabase = await createSupabaseServerActionClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    throw new Error("Not authenticated");
+  }
+
+  const ingredients_v2: LineItem[] = draft.ingredients.map((text) => ({
+    id: crypto.randomUUID(),
+    text,
+  }));
+
+  const steps_v2: LineItem[] = draft.steps.map((text) => ({
+    id: crypto.randomUUID(),
+    text,
+  }));
+
+  const { error } = await supabase.from("recipes").insert({
+    user_id: user.id,
+    title: draft.title,
+    ingredients_v2,
+    steps_v2,
+    notes: draft.notes ?? null,
+    source: draft.source ?? null,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  revalidatePath("/recipes");
 }
 
 export async function updateRecipe(
@@ -107,6 +157,8 @@ export async function updateRecipe(
       steps_v2: nextSteps,
     })
     .eq("id", recipeId);
+
+  revalidatePath("/recipes");
 }
 
 export async function deleteRecipe(id: string) {
@@ -127,6 +179,8 @@ export async function deleteRecipe(id: string) {
     .eq("user_id", user.id);
 
   if (error) throw error;
+
+  revalidatePath("/recipes");
 }
 
 export async function logout() {

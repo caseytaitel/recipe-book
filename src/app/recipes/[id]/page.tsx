@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerReadClient } from "@/lib/supabase/server";
 import RecipeDetailClient from "./RecipeDetailClient";
 
 export default async function RecipeDetailPage({
@@ -10,7 +10,7 @@ export default async function RecipeDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerReadClient();
 
   const {
     data: { user },

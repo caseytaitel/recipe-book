@@ -4,6 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerReadClient } from "@/lib/supabase/server";
 import { deleteRecipe, getRecipes } from "@/lib/recipes";
+import AddRecipeButton from "./AddRecipeButton";
 
 export default async function RecipesPage() {
   const supabase = await createSupabaseServerReadClient();
@@ -25,13 +26,7 @@ export default async function RecipesPage() {
     <main className="space-y-6">
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Recipes</h1>
-
-        <Link
-          href="/recipes/new"
-          className="rounded-md bg-black px-4 py-2 text-white"
-        >
-          Add recipe
-        </Link>
+        <AddRecipeButton />
       </header>
 
       {recipes.length === 0 ? (
