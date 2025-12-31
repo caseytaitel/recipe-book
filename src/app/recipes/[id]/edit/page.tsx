@@ -1,9 +1,13 @@
 export const dynamic = "force-dynamic";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createServerClient } from "@supabase/ssr";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { updateRecipe } from "@/lib/recipes";
+
+type LineItem = {
+  id: string;
+  text: string;
+};
 
 export default async function EditRecipePage({
   params,
@@ -11,19 +15,7 @@ export default async function EditRecipePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const cookieStore = await cookies();
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-      },
-    }
-  );
+  const supabase = createSupabaseServerClient();
 
   const {
     data: { user },
@@ -32,15 +24,23 @@ export default async function EditRecipePage({
   if (!user) redirect("/login");
 
   const { data } = await supabase
-  .from("recipes")
-  .select("id, title, ingredients, steps, notes")
-  .eq("id", id)
-  .eq("user_id", user.id)
-  .single();
+    .from("recipes")
+    .select("id, title, ingredients_v2, steps_v2, notes")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
 
   if (!data) redirect("/recipes");
 
   const recipe = data;
+
+  const ingredients = recipe.ingredients_v2.map(
+    (item: LineItem) => item.text
+  );
+
+  const steps = recipe.steps_v2.map(
+    (item: LineItem) => item.text
+  );
 
   async function action(formData: FormData) {
     "use server";
@@ -50,7 +50,7 @@ export default async function EditRecipePage({
 
   return (
     <main className="max-w-md space-y-6">
-      <h1 className="text-xl font-semibold">Edit recipe</h1>
+      <h1 className="text-xl font-semibold">Edit Recipe</h1>
 
       <form action={action} className="space-y-4">
         <div className="space-y-1">
@@ -70,7 +70,7 @@ export default async function EditRecipePage({
           <textarea
             name="ingredients"
             rows={5}
-            defaultValue={recipe.ingredients.join("\n")}
+            defaultValue={ingredients.join("\n")}
             className="w-full rounded-md border p-2"
           />
         </div>
@@ -82,7 +82,7 @@ export default async function EditRecipePage({
           <textarea
             name="steps"
             rows={6}
-            defaultValue={recipe.steps.join("\n")}
+            defaultValue={steps.join("\n")}
             className="w-full rounded-md border p-2"
           />
         </div>

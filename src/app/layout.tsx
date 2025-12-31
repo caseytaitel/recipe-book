@@ -1,6 +1,6 @@
 import "./globals.css";
 import { cookies, headers } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import NavBar from "./NavBar";
 
 export const metadata = {
@@ -13,21 +13,9 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = await cookies();
+  const supabase = createSupabaseServerClient();
   const headersList = await headers();
   const pathname = headersList.get("x-pathname") || "";
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-      },
-    }
-  );
 
   const {
     data: { user },

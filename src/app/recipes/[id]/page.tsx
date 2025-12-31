@@ -1,8 +1,7 @@
 export const dynamic = "force-dynamic";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createServerClient } from "@supabase/ssr";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import RecipeDetailClient from "./RecipeDetailClient";
 
 export default async function RecipeDetailPage({
@@ -11,19 +10,7 @@ export default async function RecipeDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const cookieStore = await cookies();
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-      },
-    }
-  );
+  const supabase = createSupabaseServerClient();
 
   const {
     data: { user },
@@ -33,12 +20,22 @@ export default async function RecipeDetailPage({
 
   const { data: recipe } = await supabase
     .from("recipes")
-    .select("id, title, ingredients, steps, notes")
+    .select("id, title, ingredients_v2, steps_v2, notes")
     .eq("id", id)
     .eq("user_id", user.id)
     .single();
 
   if (!recipe) redirect("/recipes");
-
-  return <RecipeDetailClient recipe={recipe} />;
+  
+  return (
+    <RecipeDetailClient
+      recipe={{
+        id: recipe.id,
+        title: recipe.title,
+        ingredients: recipe.ingredients_v2,
+        steps: recipe.steps_v2,
+        notes: recipe.notes,
+      }}
+    />
+  );   
 }
