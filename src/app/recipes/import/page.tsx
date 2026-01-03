@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { discardImport, saveImportedRecipe } from "@/lib/recipes";
 
 type ImportDraft = {
   title: string;
@@ -11,6 +12,24 @@ type ImportDraft = {
   };
 };
 
+function isValidImportDraft(value: unknown): value is ImportDraft {
+  if (!value || typeof value !== "object") return false;
+  const draft = value as Record<string, unknown>;
+  return (
+    typeof draft.title === "string" &&
+    Array.isArray(draft.ingredients) &&
+    draft.ingredients.every((item) => typeof item === "string") &&
+    Array.isArray(draft.steps) &&
+    draft.steps.every((step) => typeof step === "string") &&
+    (draft.notes === undefined || typeof draft.notes === "string") &&
+    (draft.source === undefined ||
+      (typeof draft.source === "object" &&
+        draft.source !== null &&
+        typeof (draft.source as Record<string, unknown>).type === "string" &&
+        typeof (draft.source as Record<string, unknown>).value === "string"))
+  );
+}
+
 export default async function ImportRecipePage({
   searchParams,
 }: {
@@ -18,29 +37,29 @@ export default async function ImportRecipePage({
 }) {
   const params = await searchParams;
 
-  if (!params.draft) {
+  if (!params.draft || typeof params.draft !== "string") {
     redirect("/recipes");
   }
 
-  let draft: ImportDraft;
-
+  let parsed: unknown;
   try {
-    draft = JSON.parse(params.draft);
+    parsed = JSON.parse(params.draft);
   } catch {
     redirect("/recipes");
   }
+
+  if (!isValidImportDraft(parsed)) {
+    redirect("/recipes");
+  }
+
+  const draft: ImportDraft = parsed;
 
   return (
     <main className="space-y-6">
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Imported Recipe</h1>
 
-        <form
-          action={async () => {
-            "use server";
-            redirect("/recipes");
-          }}
-        >
+        <form action={discardImport}>
           <button
             type="submit"
             className="text-sm underline text-slate-500"
@@ -84,14 +103,7 @@ export default async function ImportRecipePage({
         )}
       </section>
 
-      <form
-        action={async () => {
-          "use server";
-          const { createRecipeFromImport } = await import("@/lib/recipes");
-          await createRecipeFromImport(draft);
-          redirect("/recipes");
-        }}
-      >
+      <form action={saveImportedRecipe.bind(null, draft)}>
         <button
           type="submit"
           className="rounded-md bg-black px-4 py-2 text-white"

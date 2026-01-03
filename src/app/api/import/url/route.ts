@@ -1,9 +1,8 @@
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-});
 
 type RecipeImportDraft = {
   title: string;
@@ -16,39 +15,105 @@ type RecipeImportDraft = {
   };
 };
 
+type ParsedRecipe = {
+  title?: unknown;
+  ingredients?: unknown;
+  steps?: unknown;
+  notes?: unknown;
+};
+
+function isValidUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function normalizeRecipeData(parsed: ParsedRecipe, url: string): RecipeImportDraft {
+  return {
+    title: typeof parsed.title === "string" ? parsed.title : "",
+    ingredients: Array.isArray(parsed.ingredients)
+      ? parsed.ingredients.filter((item): item is string => typeof item === "string")
+      : [],
+    steps: Array.isArray(parsed.steps)
+      ? parsed.steps.filter((step): step is string => typeof step === "string")
+      : [],
+    notes:
+      typeof parsed.notes === "string"
+        ? parsed.notes || undefined
+        : parsed.notes === null
+        ? undefined
+        : undefined,
+    source: {
+      type: "url",
+      value: url,
+    },
+  };
+}
+
 export async function POST(req: Request) {
   try {
-    const { url } = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid request body" },
+        { status: 400 }
+      );
+    }
 
-    if (!url || typeof url !== "string") {
+    if (!body || typeof body !== "object") {
       return NextResponse.json(
         { error: "Invalid or missing URL" },
         { status: 400 }
       );
     }
 
-    const res = await fetch(url, {
+    const url = (body as Record<string, unknown>).url;
+
+    if (!url || typeof url !== "string" || !isValidUrl(url)) {
+      return NextResponse.json(
+        { error: "Invalid or missing URL" },
+        { status: 400 }
+      );
+    }
+
+    const fetchRes = await fetch(url, {
       headers: { "User-Agent": "RecipeBookBot/1.0" },
     });
 
-    if (!res.ok) {
+    if (!fetchRes.ok) {
       return NextResponse.json(
         { error: "Failed to fetch URL" },
         { status: 400 }
       );
     }
 
-    const html = await res.text();
+    const html = await fetchRes.text();
 
-    // --- AI extraction ---
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      console.error("OPENAI_API_KEY is not configured");
+      return NextResponse.json(
+        { error: "Server configuration error" },
+        { status: 500 }
+      );
+    }
+
+    const openai = new OpenAI({
+      apiKey,
+    });
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4.1-mini",
       temperature: 0,
       messages: [
         {
           role: "system",
-          content:
-            "You extract structured recipe data. Return ONLY valid JSON.",
+          content: "You extract structured recipe data. Return ONLY valid JSON.",
         },
         {
           role: "user",
@@ -73,35 +138,33 @@ ${html}
 
     const raw = completion.choices[0]?.message?.content;
 
-    if (!raw) {
+    if (!raw || typeof raw !== "string") {
+      console.error("OpenAI returned no content");
       return NextResponse.json(
-        { error: "AI returned no content" },
+        { error: "Failed to extract recipe from URL" },
         { status: 500 }
       );
     }
 
-    let parsed;
+    let parsed: unknown;
     try {
       parsed = JSON.parse(raw);
-    } catch {
+    } catch (parseError) {
+      console.error("Failed to parse OpenAI JSON response:", parseError);
       return NextResponse.json(
-        { error: "Failed to parse AI response" },
+        { error: "Failed to parse recipe data" },
         { status: 500 }
       );
     }
 
-    const draft: RecipeImportDraft = {
-      title: parsed.title ?? "",
-      ingredients: Array.isArray(parsed.ingredients)
-        ? parsed.ingredients
-        : [],
-      steps: Array.isArray(parsed.steps) ? parsed.steps : [],
-      notes: parsed.notes ?? "",
-      source: {
-        type: "url",
-        value: url,
-      },
-    };
+    if (!parsed || typeof parsed !== "object") {
+      return NextResponse.json(
+        { error: "Invalid recipe format received" },
+        { status: 500 }
+      );
+    }
+
+    const draft = normalizeRecipeData(parsed as ParsedRecipe, url);
 
     return NextResponse.json(draft);
   } catch (err) {
