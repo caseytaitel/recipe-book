@@ -12,19 +12,23 @@ type ImportDraft = {
 };
 
 export default async function ImportRecipePage({
-    searchParams,
-  }: {
-    searchParams: Promise<{ draft?: string }>;
-  }) {
-    const params = await searchParams;
-    if (!params.draft) redirect("/recipes");
-    let draft: ImportDraft;
+  searchParams,
+}: {
+  searchParams: Promise<{ draft?: string }>;
+}) {
+  const params = await searchParams;
 
-    try {
-    draft = JSON.parse(params.draft);
-    } catch {
+  if (!params.draft) {
     redirect("/recipes");
-    }
+  }
+
+  let draft: ImportDraft;
+
+  try {
+    draft = JSON.parse(params.draft);
+  } catch {
+    redirect("/recipes");
+  }
 
   return (
     <main className="space-y-6">
@@ -82,19 +86,19 @@ export default async function ImportRecipePage({
 
       <form
         action={async () => {
-            "use server";
-            const { createRecipeFromImport } = await import("@/lib/recipes");
-            await createRecipeFromImport(draft);
-            redirect("/recipes");
+          "use server";
+          const { createRecipeFromImport } = await import("@/lib/recipes");
+          await createRecipeFromImport(draft);
+          redirect("/recipes");
         }}
-        >
+      >
         <button
-            type="submit"
-            className="rounded-md bg-black px-4 py-2 text-white"
+          type="submit"
+          className="rounded-md bg-black px-4 py-2 text-white"
         >
-            Save recipe
+          Save Recipe
         </button>
-        </form>
+      </form>
     </main>
   );
 }

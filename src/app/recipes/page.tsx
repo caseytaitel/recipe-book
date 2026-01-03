@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerReadClient } from "@/lib/supabase/server";
-import { deleteRecipe, getRecipes } from "@/lib/recipes";
+import { deleteRecipe, getRecipes} from "@/lib/recipes";
 import AddRecipeButton from "./AddRecipeButton";
 
 export default async function RecipesPage() {
@@ -16,11 +16,6 @@ export default async function RecipesPage() {
   if (!user) redirect("/login");
 
   const recipes = await getRecipes();
-
-  async function handleDelete(id: string) {
-    "use server";
-    await deleteRecipe(id);
-  }
 
   return (
     <main className="space-y-6">
@@ -57,7 +52,7 @@ export default async function RecipesPage() {
                   Edit
                 </Link>
 
-                <form action={handleDelete.bind(null, recipe.id)}>
+                <form action={deleteRecipe.bind(null, recipe.id)}>
                   <button
                     type="submit"
                     className="text-sm text-red-600 underline"

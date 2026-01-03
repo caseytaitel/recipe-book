@@ -1,14 +1,15 @@
+"use client";
+
 import { logout } from "@/lib/recipes";
-import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function NavBar() {
+  const router = useRouter();
+
   async function handleLogout() {
-    "use server";
     await logout();
-    revalidatePath("/", "layout");
-    redirect("/");
+    router.push("/");
   }
 
   return (
@@ -17,13 +18,14 @@ export default function NavBar() {
         <Link href="/recipes" className="text-sm font-medium">
           Recipe Book
         </Link>
-        <form action={handleLogout}>
-          <button type="submit" className="text-sm">
-            Log Out
-          </button>
-        </form>
+
+        <button
+          onClick={handleLogout}
+          className="text-sm"
+        >
+          Log Out
+        </button>
       </div>
     </nav>
   );
 }
-

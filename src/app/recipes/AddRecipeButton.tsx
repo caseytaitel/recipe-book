@@ -45,6 +45,10 @@ export default function AddRecipeButton() {
     await runImport(url);
   }
 
+  function handleImportFromPhoto() {
+    router.push("/recipes/import/photo");
+  }  
+
   async function handleRetry() {
     if (!lastUrl) return;
     await runImport(lastUrl);
@@ -58,7 +62,7 @@ export default function AddRecipeButton() {
           disabled={isImporting}
           className="rounded-md bg-black px-4 py-2 text-white disabled:opacity-50"
         >
-          Add recipe
+          Add Recipe
         </button>
 
         <button
@@ -68,6 +72,15 @@ export default function AddRecipeButton() {
         >
           {isImporting ? "Importing…" : "Import from URL"}
         </button>
+
+        <button
+          onClick={handleImportFromPhoto}
+          disabled={isImporting}
+          className="rounded-md border px-4 py-2 text-sm disabled:opacity-50"
+        >
+          Import from Photo
+        </button>
+
       </div>
 
       {error && (

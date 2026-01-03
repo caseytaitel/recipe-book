@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerReadClient } from "@/lib/supabase/server";
 import { updateRecipe } from "@/lib/recipes";
 
 type LineItem = {
@@ -15,7 +15,7 @@ export default async function EditRecipePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerReadClient();
 
   const {
     data: { user },
@@ -42,17 +42,11 @@ export default async function EditRecipePage({
     (item: LineItem) => item.text
   );
 
-  async function action(formData: FormData) {
-    "use server";
-    await updateRecipe(recipe.id, formData);
-    redirect(`/recipes/${recipe.id}`);
-  }
-
   return (
     <main className="max-w-md space-y-6">
       <h1 className="text-xl font-semibold">Edit Recipe</h1>
 
-      <form action={action} className="space-y-4">
+      <form action={updateRecipe.bind(null, recipe.id)} className="space-y-4">
         <div className="space-y-1">
           <label className="text-sm font-medium">Title</label>
           <input
