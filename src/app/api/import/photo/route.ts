@@ -1,45 +1,12 @@
+// TODO Phase 4+: leverage extracted normalization pipeline when adding footnotes or structured annotations.
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
-
-type RecipeImportDraft = {
-  title: string;
-  ingredients: string[];
-  steps: string[];
-  notes?: string;
-};
-
-function isValidRecipeDraft(value: unknown): value is RecipeImportDraft {
-  if (!value || typeof value !== "object") return false;
-  const draft = value as Record<string, unknown>;
-  return (
-    typeof draft.title === "string" &&
-    Array.isArray(draft.ingredients) &&
-    draft.ingredients.every((item) => typeof item === "string") &&
-    Array.isArray(draft.steps) &&
-    draft.steps.every((step) => typeof step === "string") &&
-    (draft.notes === undefined || typeof draft.notes === "string")
-  );
-}
-
-function cleanJsonResponse(raw: string): string {
-  let cleaned = raw.trim();
-  
-  // Remove markdown code fences (```json ... ``` or ``` ... ```)
-  cleaned = cleaned.replace(/^```json\s*/i, "");
-  cleaned = cleaned.replace(/^```\s*/i, "");
-  cleaned = cleaned.replace(/```\s*$/i, "");
-  
-  // Extract JSON object/array if embedded in text
-  const jsonMatch = cleaned.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
-  if (jsonMatch) {
-    cleaned = jsonMatch[0];
-  }
-  
-  return cleaned.trim();
-}
+import { isValidImportDraft, cleanJsonResponse } from "@/lib/import";
+import { OPENAI_MODEL } from "@/lib/ai/config";
 
 export async function POST(req: Request) {
   try {
@@ -57,9 +24,9 @@ export async function POST(req: Request) {
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      console.error("OPENAI_API_KEY is not configured");
+      console.error("[import:photo]", "OPENAI_API_KEY is not configured");
       return NextResponse.json(
-        { error: "Server configuration error" },
+        { error: "Something went wrong on our side. Please try again." },
         { status: 500 }
       );
     }
@@ -69,7 +36,7 @@ export async function POST(req: Request) {
     });
 
     const response = await openai.responses.create({
-      model: "gpt-4.1-mini",
+      model: OPENAI_MODEL,
       input: [
         {
           role: "user",
@@ -99,9 +66,9 @@ Return strict JSON only.
     const rawText = response.output_text;
 
     if (!rawText || typeof rawText !== "string") {
-      console.error("OpenAI returned no text content");
+      console.error("[import:photo]", "OpenAI returned no text content");
       return NextResponse.json(
-        { error: "Failed to extract recipe from photo" },
+        { error: "We couldn't read that photo. Try another image or better lighting." },
         { status: 500 }
       );
     }
@@ -112,26 +79,26 @@ Return strict JSON only.
     try {
       parsed = JSON.parse(cleaned);
     } catch (parseError) {
-      console.error("Failed to parse OpenAI JSON response:", parseError);
+      console.error("[import:photo]", parseError);
       return NextResponse.json(
-        { error: "Failed to parse recipe data" },
+        { error: "We couldn't read that photo. Try another image or better lighting." },
         { status: 500 }
       );
     }
 
-    if (!isValidRecipeDraft(parsed)) {
-      console.error("OpenAI response does not match expected structure");
+    if (!isValidImportDraft(parsed)) {
+      console.error("[import:photo]", "OpenAI response does not match expected structure");
       return NextResponse.json(
-        { error: "Invalid recipe format received" },
+        { error: "We couldn't read that photo. Try another image or better lighting." },
         { status: 500 }
       );
     }
 
     return NextResponse.json(parsed);
   } catch (err) {
-    console.error("Photo import failed:", err);
+    console.error("[import:photo]", err);
     return NextResponse.json(
-      { error: "Failed to import from photo" },
+      { error: "We couldn't read that photo. Try another image or better lighting." },
       { status: 500 }
     );
   }

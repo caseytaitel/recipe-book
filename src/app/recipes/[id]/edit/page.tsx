@@ -1,38 +1,74 @@
-export const dynamic = "force-dynamic";
+"use client";
 
-import { redirect } from "next/navigation";
-import { createSupabaseServerReadClient } from "@/lib/supabase/server";
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { updateRecipe } from "@/lib/recipes";
+import { supabase } from "@/lib/supabase/client";
 
 type LineItem = {
   id: string;
   text: string;
 };
 
-export default async function EditRecipePage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const supabase = await createSupabaseServerReadClient();
+type Recipe = {
+  id: string;
+  title: string;
+  ingredients_v2: LineItem[];
+  steps_v2: LineItem[];
+  notes: string | null;
+};
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export default function EditRecipePage() {
+  const router = useRouter();
+  const params = useParams();
+  const id = params.id as string;
+  const [loading, setLoading] = useState(false);
+  const [recipe, setRecipe] = useState<Recipe | null>(null);
 
-  if (!user) redirect("/login");
+  useEffect(() => {
+    async function fetchRecipe() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-  const { data } = await supabase
-    .from("recipes")
-    .select("id, title, ingredients_v2, steps_v2, notes")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .single();
+      if (!user) {
+        router.push("/login");
+        return;
+      }
 
-  if (!data) redirect("/recipes");
+      const { data } = await supabase
+        .from("recipes")
+        .select("id, title, ingredients_v2, steps_v2, notes")
+        .eq("id", id)
+        .eq("user_id", user.id)
+        .single();
 
-  const recipe = data;
+      if (!data) {
+        router.push("/recipes");
+        return;
+      }
+
+      setRecipe(data);
+    }
+
+    fetchRecipe();
+  }, [id, router]);
+
+  async function action(formData: FormData) {
+    if (!recipe) return;
+    setLoading(true);
+    await updateRecipe(recipe.id, formData);
+    router.push("/recipes");
+  }
+
+  if (!recipe) {
+    return (
+      <main className="max-w-md space-y-6">
+        <h1 className="text-xl font-semibold">Edit Recipe</h1>
+        <p className="text-slate-600">Loading...</p>
+      </main>
+    );
+  }
 
   const ingredients = recipe.ingredients_v2.map(
     (item: LineItem) => item.text
@@ -46,7 +82,7 @@ export default async function EditRecipePage({
     <main className="max-w-md space-y-6">
       <h1 className="text-xl font-semibold">Edit Recipe</h1>
 
-      <form action={updateRecipe.bind(null, recipe.id)} className="space-y-4">
+      <form action={action} className="space-y-4">
         <div className="space-y-1">
           <label className="text-sm font-medium">Title</label>
           <input
@@ -91,8 +127,11 @@ export default async function EditRecipePage({
           />
         </div>
 
-        <button className="rounded-md bg-black px-4 py-2 text-white">
-          Save Changes
+        <button
+          disabled={loading}
+          className="rounded-md bg-black px-4 py-2 text-white disabled:opacity-50"
+        >
+          {loading ? "Saving…" : "Save Changes"}
         </button>
       </form>
     </main>

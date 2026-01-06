@@ -2,6 +2,7 @@
 
 import { createSupabaseServerActionClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { type ImportDraft } from "@/lib/import";
 
 type LineItem = {
   id: string;
@@ -88,16 +89,7 @@ export async function createRecipe(formData: FormData) {
   revalidatePath("/recipes");
 }
 
-export async function createRecipeFromImport(draft: {
-  title: string;
-  ingredients: string[];
-  steps: string[];
-  notes?: string;
-  source?: {
-    type: string;
-    value: string;
-  };
-}) {
+export async function createRecipeFromImport(draft: ImportDraft) {
   const supabase = await createSupabaseServerActionClient();
 
   const {
@@ -170,7 +162,7 @@ export async function updateRecipe(
 
   const { data: existing, error: fetchError } = await supabase
     .from("recipes")
-    .select("title, ingredients_v2, steps_v2, user_id")
+    .select("title, user_id")
     .eq("id", recipeId)
     .single();
 
@@ -192,37 +184,13 @@ export async function updateRecipe(
     throw new Error("Title is required");
   }
 
-  const existingIngredients: LineItem[] =
-    Array.isArray(existing.ingredients_v2) &&
-    existing.ingredients_v2.every(
-      (item): item is LineItem =>
-        typeof item === "object" &&
-        item !== null &&
-        typeof (item as Record<string, unknown>).id === "string" &&
-        typeof (item as Record<string, unknown>).text === "string"
-    )
-      ? existing.ingredients_v2
-      : [];
-
-  const existingSteps: LineItem[] =
-    Array.isArray(existing.steps_v2) &&
-    existing.steps_v2.every(
-      (item): item is LineItem =>
-        typeof item === "object" &&
-        item !== null &&
-        typeof (item as Record<string, unknown>).id === "string" &&
-        typeof (item as Record<string, unknown>).text === "string"
-    )
-      ? existing.steps_v2
-      : [];
-
-  const nextIngredients: LineItem[] = ingredientsText.map((text, index) => ({
-    id: existingIngredients[index]?.id ?? crypto.randomUUID(),
+  const nextIngredients: LineItem[] = ingredientsText.map((text) => ({
+    id: crypto.randomUUID(),
     text,
   }));
 
-  const nextSteps: LineItem[] = stepsText.map((text, index) => ({
-    id: existingSteps[index]?.id ?? crypto.randomUUID(),
+  const nextSteps: LineItem[] = stepsText.map((text) => ({
+    id: crypto.randomUUID(),
     text,
   }));
 
@@ -284,16 +252,7 @@ export async function discardImport() {
   redirect("/recipes");
 }
 
-export async function saveImportedRecipe(draft: {
-  title: string;
-  ingredients: string[];
-  steps: string[];
-  notes?: string;
-  source?: {
-    type: string;
-    value: string;
-  };
-}) {
+export async function saveImportedRecipe(draft: ImportDraft) {
   if (!draft.title || typeof draft.title !== "string") {
     throw new Error("Invalid draft: title is required");
   }

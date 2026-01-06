@@ -1,34 +1,6 @@
 import { redirect } from "next/navigation";
 import { discardImport, saveImportedRecipe } from "@/lib/recipes";
-
-type ImportDraft = {
-  title: string;
-  ingredients: string[];
-  steps: string[];
-  notes?: string;
-  source?: {
-    type: string;
-    value: string;
-  };
-};
-
-function isValidImportDraft(value: unknown): value is ImportDraft {
-  if (!value || typeof value !== "object") return false;
-  const draft = value as Record<string, unknown>;
-  return (
-    typeof draft.title === "string" &&
-    Array.isArray(draft.ingredients) &&
-    draft.ingredients.every((item) => typeof item === "string") &&
-    Array.isArray(draft.steps) &&
-    draft.steps.every((step) => typeof step === "string") &&
-    (draft.notes === undefined || typeof draft.notes === "string") &&
-    (draft.source === undefined ||
-      (typeof draft.source === "object" &&
-        draft.source !== null &&
-        typeof (draft.source as Record<string, unknown>).type === "string" &&
-        typeof (draft.source as Record<string, unknown>).value === "string"))
-  );
-}
+import { type ImportDraft, isValidImportDraft } from "@/lib/import";
 
 export default async function ImportRecipePage({
   searchParams,

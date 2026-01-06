@@ -1,26 +1,12 @@
+// TODO Phase 4+: leverage extracted normalization pipeline when adding footnotes or structured annotations.
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
-
-type RecipeImportDraft = {
-  title: string;
-  ingredients: string[];
-  steps: string[];
-  notes?: string;
-  source: {
-    type: "url";
-    value: string;
-  };
-};
-
-type ParsedRecipe = {
-  title?: unknown;
-  ingredients?: unknown;
-  steps?: unknown;
-  notes?: unknown;
-};
+import { normalizeRecipeData } from "@/lib/import";
+import { OPENAI_MODEL } from "@/lib/ai/config";
 
 function isValidUrl(url: string): boolean {
   try {
@@ -31,27 +17,12 @@ function isValidUrl(url: string): boolean {
   }
 }
 
-function normalizeRecipeData(parsed: ParsedRecipe, url: string): RecipeImportDraft {
-  return {
-    title: typeof parsed.title === "string" ? parsed.title : "",
-    ingredients: Array.isArray(parsed.ingredients)
-      ? parsed.ingredients.filter((item): item is string => typeof item === "string")
-      : [],
-    steps: Array.isArray(parsed.steps)
-      ? parsed.steps.filter((step): step is string => typeof step === "string")
-      : [],
-    notes:
-      typeof parsed.notes === "string"
-        ? parsed.notes || undefined
-        : parsed.notes === null
-        ? undefined
-        : undefined,
-    source: {
-      type: "url",
-      value: url,
-    },
-  };
-}
+type ParsedRecipe = {
+  title?: unknown;
+  ingredients?: unknown;
+  steps?: unknown;
+  notes?: unknown;
+};
 
 export async function POST(req: Request) {
   try {
@@ -67,7 +38,7 @@ export async function POST(req: Request) {
 
     if (!body || typeof body !== "object") {
       return NextResponse.json(
-        { error: "Invalid or missing URL" },
+        { error: "Please enter a valid recipe link." },
         { status: 400 }
       );
     }
@@ -76,7 +47,7 @@ export async function POST(req: Request) {
 
     if (!url || typeof url !== "string" || !isValidUrl(url)) {
       return NextResponse.json(
-        { error: "Invalid or missing URL" },
+        { error: "Please enter a valid recipe link." },
         { status: 400 }
       );
     }
@@ -87,7 +58,7 @@ export async function POST(req: Request) {
 
     if (!fetchRes.ok) {
       return NextResponse.json(
-        { error: "Failed to fetch URL" },
+        { error: "We couldn't read that website. Try another link." },
         { status: 400 }
       );
     }
@@ -96,9 +67,9 @@ export async function POST(req: Request) {
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      console.error("OPENAI_API_KEY is not configured");
+      console.error("[import:url]", "OPENAI_API_KEY is not configured");
       return NextResponse.json(
-        { error: "Server configuration error" },
+        { error: "Something went wrong on our side. Please try again." },
         { status: 500 }
       );
     }
@@ -108,7 +79,7 @@ export async function POST(req: Request) {
     });
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
+      model: OPENAI_MODEL,
       temperature: 0,
       messages: [
         {
@@ -139,9 +110,9 @@ ${html}
     const raw = completion.choices[0]?.message?.content;
 
     if (!raw || typeof raw !== "string") {
-      console.error("OpenAI returned no content");
+      console.error("[import:url]", "OpenAI returned no content");
       return NextResponse.json(
-        { error: "Failed to extract recipe from URL" },
+        { error: "We couldn't read that website." },
         { status: 500 }
       );
     }
@@ -150,16 +121,16 @@ ${html}
     try {
       parsed = JSON.parse(raw);
     } catch (parseError) {
-      console.error("Failed to parse OpenAI JSON response:", parseError);
+      console.error("[import:url]", parseError);
       return NextResponse.json(
-        { error: "Failed to parse recipe data" },
+        { error: "Something didn't look right in that recipe." },
         { status: 500 }
       );
     }
 
     if (!parsed || typeof parsed !== "object") {
       return NextResponse.json(
-        { error: "Invalid recipe format received" },
+        { error: "Something didn't look right in that recipe." },
         { status: 500 }
       );
     }
@@ -168,9 +139,9 @@ ${html}
 
     return NextResponse.json(draft);
   } catch (err) {
-    console.error("URL import failed:", err);
+    console.error("[import:url]", err);
     return NextResponse.json(
-      { error: "Unexpected error during import" },
+      { error: "Something went wrong. Try again." },
       { status: 500 }
     );
   }

@@ -22,7 +22,14 @@ export default function AddRecipeButton() {
       });
 
       if (!res.ok) {
-        throw new Error("Import failed");
+        const errorData = await res.json().catch(() => ({}));
+        const errorMessage =
+          typeof errorData.error === "string"
+            ? errorData.error
+            : "Something went wrong. Try again.";
+        setError(errorMessage);
+        setIsImporting(false);
+        return;
       }
 
       const draft = await res.json();
@@ -31,7 +38,7 @@ export default function AddRecipeButton() {
         `/recipes/import?draft=${encodeURIComponent(JSON.stringify(draft))}`
       );
     } catch (err) {
-      setError("Import failed. Please try again.");
+      setError("Something went wrong. Try again.");
     } finally {
       setIsImporting(false);
     }
