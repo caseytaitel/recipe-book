@@ -245,6 +245,20 @@ export async function logout() {
   const supabase = await createSupabaseServerActionClient();
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
+  
+  // Explicitly clear cookies by setting an empty setAll list
+  const { cookies } = await import("next/headers");
+  const cookieStore = await cookies();
+  const cookieAdapter = {
+    getAll: () => cookieStore.getAll(),
+    setAll: (cookiesToSet: Array<{ name: string; value: string; options?: any }>) => {
+      cookiesToSet.forEach(({ name, value, options }) => {
+        cookieStore.set({ name, value, ...options });
+      });
+    },
+  };
+  // Call setAll with empty array to ensure write path applies (clears cookies)
+  cookieAdapter.setAll([]);
 }
 
 export async function discardImport() {

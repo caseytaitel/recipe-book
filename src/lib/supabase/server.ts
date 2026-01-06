@@ -14,9 +14,7 @@ export async function createSupabaseServerReadClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
+        getAll: () => cookieStore.getAll(),
       },
     }
   );
@@ -34,14 +32,11 @@ export async function createSupabaseServerActionClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-        set(name: string, value: string, options: any) {
-          cookieStore.set({ name, value, ...options });
-        },
-        remove(name: string, options: any) {
-          cookieStore.set({ name, value: "", ...options });
+        getAll: () => cookieStore.getAll(),
+        setAll: (cookiesToSet: Array<{ name: string; value: string; options?: any }>) => {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set({ name, value, ...options });
+          });
         },
       },
     }
